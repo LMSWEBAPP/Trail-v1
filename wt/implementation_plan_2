@@ -1,0 +1,96 @@
+# Implementation Plan - Mascot Interactive Props & Scenario Mimicking
+
+This plan details the design and implementation approach for adding interactive "props" (headphones, floating screens, controllers, etc.) and programming the companion mascot "Vedika" to detect the user's active window/scenario and dynamically react to it with matching animations and accessories.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Active Window Detection Strategy on Windows**
+> To determine if the user is coding, gaming, watching YouTube, etc., we need to inspect the foreground application's process name and window title.
+> We propose executing a fast, lightweight **PowerShell script** from the Electron main process via `child_process.exec` every 2 seconds.
+> - **Why**: This runs instantly on Windows, has zero dependency compilation requirements (which avoids the high failure rate of native node modules like `active-win` on some setups), and securely provides the foreground window title and executable name.
+> - If you move to macOS/Linux in the future, we would adapt the shell script to query `osascript` or `xdotool`.
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **1. Manual Scenario Override / Testing Interface**
+> Do you want a way to manually force a specific scenario (e.g. force "gaming" or "music" mode) for testing or customization?
+> We propose adding a **"Mimic Scenario Override"** section to the System Tray context menu so you can easily toggle and see each animation/prop even if you don't have the corresponding application open.
+> 
+> **2. Gaze Behavior during Mimicking**
+> When a prop is active (like the code hologram panel or a reading tablet), should Vedika's eyes look at the prop instead of tracking the mouse cursor?
+> We propose:
+> - **Surfing Web / Reading PDF**: Eyes scan back and forth across the hologram screen.
+> - **Coding / Office**: Eyes look slightly down towards the panel/clipboard, occasionally looking up at the cursor.
+> - **Music / YouTube**: Eyes continue to track the user's cursor normally.
+
+---
+
+## Proposed Changes
+
+We will introduce the scenario detection in the main process, bridge the active scenario state via IPC to the renderer, and update the SVG, rig, and behavior planner layers to display and animate the props.
+
+### 1. Main Process (Scenario Observer)
+
+#### [MODIFY] [main.ts](file:///c:/Users/ADMIN/Trail-V1/src/main.ts)
+- Add a periodic query (every 2 seconds) using PowerShell to check the foreground window's title and process name.
+- Map the title/process to one of the 7 target scenarios:
+  - **Coding**: VS Code, Visual Studio, IntelliJ, etc.
+  - **YouTube**: Browsers with "YouTube" in the window title.
+  - **Web Surfing**: Browsers without "YouTube" in the title.
+  - **Office**: Word, PowerPoint, Excel, etc.
+  - **Gaming**: Full-screen games, steam, epic launcher, or common game titles.
+  - **Reading PDF**: Window title containing ".pdf" or Adobe Reader.
+  - **Music**: Spotify, iTunes, or YouTube Music titles.
+- Send the detected scenario to the renderer via IPC (`active-scenario-changed`).
+- Add a "Scenario Override" sub-menu in the System Tray for testing.
+
+### 2. Preload & IPC Bridge
+
+#### [MODIFY] [preload.ts](file:///c:/Users/ADMIN/Trail-V1/src/preload.ts)
+- Expose the IPC listener `onActiveScenarioChanged` so the renderer can receive state updates.
+
+### 3. SVG Props Layer
+
+#### [MODIFY] [index.html](file:///c:/Users/ADMIN/Trail-V1/src/renderer/index.html)
+- Add SVG graphics for each prop nested under appropriate parent groups or the main container:
+  - **Headphones** (drawn over the ear pods).
+  - **Holographic Code Panel** (floating glass screen with neon code lines).
+  - **Holographic Browser Tab** (globe icon, search bar).
+  - **Clipboard & Pencil** (paper template, pencil).
+  - **Game Controller** (gamepad shape with buttons).
+  - **Hologram Book** (book layout).
+  - **Floating Music Notes** (reusable SVG paths styled with CSS keyframe float-animations).
+- Add CSS styling for holographic glassmorphism glow and scrolling code lines.
+
+### 4. Rigging & Animation Logic
+
+#### [MODIFY] [rig.ts](file:///c:/Users/ADMIN/Trail-V1/src/renderer/rig.ts)
+- Add support for changing base poses depending on the active scenario (e.g. moving/rotating arms to hold a controller, type on a keyboard, or hold a clipboard).
+- Add support for showing/hiding prop SVG elements based on the scenario name.
+
+#### [MODIFY] [behavior.ts](file:///c:/Users/ADMIN/Trail-V1/src/renderer/behavior.ts)
+- Integrate the scenario state into the tick loop.
+- Apply dynamic micro-animations for each state:
+  - **Coding**: Alternate typing bob offsets on left/right arms (`Math.sin` driven).
+  - **Music**: Rhythmic bobbing on head/torso.
+  - **Gaming**: Fast controller-tapping arm vibrations.
+  - **Reading/Surfing**: Scan gaze coordinate parameters left-to-right.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Run `npm run build` to verify compiling with the updated Typings and IPC signals.
+- Open the Debug Overlay to ensure the active scenario displays correctly in real-time as you switch windows.
+
+### Manual Verification
+- **Window Switching**: Open VS Code, Spotify, a browser tab on YouTube, or a PDF reader, and verify that the mascot instantly displays the correct prop and animation.
+- **Tray Menu Override**: Toggle each scenario from the tray menu and verify the visual alignment of the accessories (e.g. headphones align correctly on the helmet ear pods).
+- **Scale Compatibility**: Use Ctrl + Scroll Wheel to resize the mascot and verify that all props scale proportionally along with the main body.

@@ -38,23 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initDragging() {
-  const container = document.getElementById('mascot-container');
-  if (!container || !(window as any).electronAPI) return;
-
-  container.addEventListener('pointerdown', (e: PointerEvent) => {
-    // Only drag with left click
-    if (e.button !== 0) return;
-    
-    // Delegate tracking to the main process, passing the click offset relative to the window
-    (window as any).electronAPI.startDrag(e.clientX, e.clientY);
-  });
-
-  const stopDrag = () => {
-    (window as any).electronAPI.stopDrag();
-  };
-
-  window.addEventListener('pointerup', stopDrag);
-  window.addEventListener('pointercancel', stopDrag);
+  // Native OS-level dragging is enabled via CSS (-webkit-app-region: drag) on #mascot-container
 }
 
 function initScaling() {

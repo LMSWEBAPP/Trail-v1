@@ -32,7 +32,7 @@ The codebase is split into clean, modular TypeScript components following the de
 You can interact with Vedika in several ways:
 
 1. **Repositioning (Dragging)**:
-   - Left-click on Vedika's helmet or body and drag to move the transparent window anywhere on your screen.
+   - Left-click on Vedika's helmet or body and drag to move the transparent window anywhere on your screen (implemented smoothly via native OS-level `-webkit-app-region: drag` styles).
 2. **Resizing (Scaling)**:
    - Hover over the mascot, hold the **Ctrl** key, and use your mouse scroll wheel to scale Vedika up or down (from `0.5x` to `1.5x`).
 3. **Click Reactivity (Bouncing)**:

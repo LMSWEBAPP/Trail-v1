@@ -28,21 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 });
 function initDragging() {
-    const container = document.getElementById('mascot-container');
-    if (!container || !window.electronAPI)
-        return;
-    container.addEventListener('pointerdown', (e) => {
-        // Only drag with left click
-        if (e.button !== 0)
-            return;
-        // Delegate tracking to the main process, passing the click offset relative to the window
-        window.electronAPI.startDrag(e.clientX, e.clientY);
-    });
-    const stopDrag = () => {
-        window.electronAPI.stopDrag();
-    };
-    window.addEventListener('pointerup', stopDrag);
-    window.addEventListener('pointercancel', stopDrag);
+    // Native OS-level dragging is enabled via CSS (-webkit-app-region: drag) on #mascot-container
 }
 function initScaling() {
     const svg = document.getElementById('mascot-svg');
