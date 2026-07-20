@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vedika Desktop Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-transparent: rgba(0, 0, 0, 0);
+      --accent-color: #0088ff;
+      --bubble-bg: rgba(25, 25, 30, 0.85);
+      --bubble-text: #ffffff;
+      --border-radius: 12px;
+      --font-family: 'Outfit', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-transparent);
+      font-family: var(--font-family);
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+    }
+
+    /* Mascot Container */
+    #mascot-container {
+      width: 300px;
+      height: 400px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: grab;
+      pointer-events: auto;
+    }
+
+    #mascot-container:active {
+      cursor: grabbing;
+    }
+
+    #mascot-svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25));
+      transform: scale(0.8);
+      transform-origin: center;
+      transition: transform 0.1s ease-out;
+    }
+
+    /* Speech Bubble */
+    #speech-bubble {
+      position: absolute;
+      bottom: 350px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      background-color: var(--bubble-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--bubble-text);
+      padding: 12px 18px;
+      border-radius: var(--border-radius);
+      font-size: 0.95rem;
+      font-weight: 400;
+      line-height: 1.4;
+      width: 260px;
+      max-height: 120px;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                  transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 100;
+    }
+
+    #speech-bubble.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+      pointer-events: auto;
+    }
+
+    #speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 8px 8px 0;
+      border-style: solid;
+      border-color: var(--bubble-bg) transparent;
+      display: block;
+      width: 0;
+    }
+
+    /* Debug Panel */
+    #debug-panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(10, 10, 15, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: monospace;
+      font-size: 0.68rem;
+      color: #00ff66;
+      pointer-events: none;
+      display: none; /* Toggled via settings */
+      z-index: 1000;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    .debug-line {
+      margin-bottom: 2px;
+    }
+
+    .debug-label {
+      color: #aaa;
+    }
+
+    /* Transform origins for elements */
+    #head-group {
+      transform-origin: 160px 190px;
+      transition: transform 0.05s linear;
+    }
+
+    #torso-group {
+      transform-origin: 160px 320px;
+      transition: transform 0.05s linear;
+    }
+
+    #left-arm {
+      transform-origin: 108px 245px;
+      transition: transform 0.05s linear;
+    }
+
+    #right-arm {
+      transform-origin: 212px 245px;
+      transition: transform 0.05s linear;
+    }
+
+    #left-leg {
+      transform-origin: 130px 335px;
+      transition: transform 0.05s linear;
+    }
+
+    #right-leg {
+      transform-origin: 190px 335px;
+      transition: transform 0.05s linear;
+    }
+
+    #visor-highlights {
+      transition: transform 0.05s linear;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Live Debug Information -->
+  <div id="debug-panel">
+    <div class="debug-line"><span class="debug-label">Mascot:</span> Vedika</div>
+    <div class="debug-line"><span class="debug-label">State:</span> <span id="db-state">IDLE</span></div>
+    <div class="debug-line"><span class="debug-label">Gaze X/Y:</span> <span id="db-gaze">0.00 / 0.00</span></div>
+    <div class="debug-line"><span class="debug-label">Head Tilt:</span> <span id="db-head-tilt">0.00°</span></div>
+    <div class="debug-line"><span class="debug-label">Body Lean:</span> <span id="db-body-lean">0.00°</span></div>
+    <div class="debug-line"><span class="debug-label">Activity Level:</span> <span id="db-activity">0.00</span></div>
+    <div class="debug-line"><span class="debug-label">Idle Time:</span> <span id="db-idle">0.0s</span></div>
+    <div class="debug-line"><span class="debug-label">Energy / Sleep:</span> <span id="db-energy">1.00</span> / <span id="db-sleep">0.00</span></div>
+  </div>
+
+  <!-- Speech Bubble -->
+  <div id="speech-bubble">Hello! I am Vedika. Let's study or write code together!</div>
+
+  <!-- Mascot Container -->
+  <div id="mascot-container">
+    <svg id="mascot-svg" viewBox="0 0 320 450" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Glow effect for status light -->
+        <filter id="blue-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Ground Shadow -->
+      <ellipse id="ground-shadow" cx="160" cy="415" rx="60" ry="8" fill="rgba(0,0,0,0.15)" />
+
+      <!-- Backpack (Behind Body) -->
+      <g id="backpack">
+        <rect id="backpack-left" x="90" y="235" width="25" height="85" rx="10" fill="white" stroke="black" stroke-width="6" />
+        <rect id="backpack-right" x="205" y="235" width="25" height="85" rx="10" fill="white" stroke="black" stroke-width="6" />
+      </g>
+
+      <!-- Legs & Pelvis -->
+      <g id="lower-body">
+        <!-- Pelvis/Hip area -->
+        <path id="pelvis" d="M 120,335 L 200,335 C 200,335 200,360 160,360 C 120,360 120,335 120,335 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+        
+        <!-- Left Leg -->
+        <g id="left-leg" class="rig-part">
+          <!-- Thigh -->
+          <path id="left-thigh" d="M 115,355 C 115,355 115,395 120,400 C 125,405 145,405 145,395 C 145,385 145,355 145,355 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+          <!-- Boot -->
+          <rect id="left-boot" x="105" y="395" width="44" height="15" rx="7.5" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+        </g>
+
+        <!-- Right Leg -->
+        <g id="right-leg" class="rig-part">
+          <!-- Thigh -->
+          <path id="right-thigh" d="M 175,355 C 175,355 175,395 180,400 C 185,405 205,405 205,395 C 205,385 205,355 205,355 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+          <!-- Boot -->
+          <rect id="right-boot" x="171" y="395" width="44" height="15" rx="7.5" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+        </g>
+      </g>
+
+      <!-- Torso & Arms -->
+      <g id="torso-group" class="rig-part">
+        <!-- Torso base white capsule -->
+        <path id="torso" d="M 110,250 C 110,230 210,230 210,250 L 210,340 C 210,340 210,345 200,345 L 120,345 C 110,345 110,340 110,340 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+        <!-- Gray shading at the bottom of the suit body -->
+        <path id="belly-shade" d="M 110,320 C 130,335 190,335 210,320 L 210,340 C 210,340 210,345 200,345 L 120,345 C 110,345 110,340 110,340 Z" fill="#d2d2d2" stroke="none" />
+        
+        <!-- Chest Device Module -->
+        <g id="chest-device">
+          <!-- Back Plate -->
+          <rect id="chest-base" x="130" y="265" width="60" height="40" rx="8" fill="white" stroke="black" stroke-width="5" />
+          <!-- Seam split -->
+          <line id="chest-seam" x1="156" y1="265" x2="156" y2="305" stroke="black" stroke-width="3" />
+          <!-- Indented lines/box details -->
+          <path id="chest-accent" d="M 138,272 L 148,272 L 148,298 L 138,298 Z" fill="none" stroke="black" stroke-width="2" />
+          <!-- Chest indicator status light -->
+          <circle id="chest-light" cx="174" cy="285" r="5" fill="#0088ff" filter="url(#blue-glow)" />
+        </g>
+
+        <!-- Left Arm -->
+        <g id="left-arm" class="rig-part">
+          <!-- Joint connector (gray) -->
+          <circle cx="108" cy="265" r="8" fill="#d2d2d2" stroke="black" stroke-width="3" />
+          <!-- Arm capsule -->
+          <path id="left-arm-capsule" d="M 108,260 C 95,260 85,280 85,305 C 85,315 95,325 105,325 C 115,325 120,315 120,305 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+          <!-- Arm shadow crease -->
+          <path d="M 87,295 C 93,305 107,305 118,295" fill="none" stroke="#d2d2d2" stroke-width="3" />
+        </g>
+
+        <!-- Right Arm -->
+        <g id="right-arm" class="rig-part">
+          <!-- Joint connector (gray) -->
+          <circle cx="212" cy="265" r="8" fill="#d2d2d2" stroke="black" stroke-width="3" />
+          <!-- Arm capsule -->
+          <path id="right-arm-capsule" d="M 212,260 C 225,260 235,280 235,305 C 235,315 225,325 215,325 C 205,325 200,315 200,305 Z" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+          <!-- Arm shadow crease -->
+          <path d="M 233,295 C 227,305 213,305 202,295" fill="none" stroke="#d2d2d2" stroke-width="3" />
+        </g>
+      </g>
+
+      <!-- Head & Helmet -->
+      <g id="head-group" class="rig-part">
+        <!-- Left Pod -->
+        <rect id="left-ear-pod" x="78" y="150" width="16" height="40" rx="8" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+        <line x1="86" y1="150" x2="86" y2="190" stroke="black" stroke-width="2" />
+        
+        <!-- Right Pod -->
+        <rect id="right-ear-pod" x="226" y="150" width="16" height="40" rx="8" fill="white" stroke="black" stroke-width="6" stroke-linejoin="round" />
+        <line x1="234" y1="150" x2="234" y2="190" stroke="black" stroke-width="2" />
+
+        <!-- Helmet Back (shadow accent) -->
+        <circle cx="160" cy="170" r="71" fill="none" stroke="black" stroke-width="6" />
+
+        <!-- White Helmet Shell -->
+        <circle id="helmet-shell" cx="160" cy="170" r="70" fill="white" stroke="black" stroke-width="6" />
+
+        <!-- Top Helmet Arc/Band -->
+        <path id="helmet-band" d="M 120,113 C 140,108 180,108 200,113" fill="none" stroke="black" stroke-width="4" stroke-linecap="round" />
+
+        <!-- Visor Rim / Border -->
+        <ellipse cx="160" cy="175" rx="56" ry="46" fill="none" stroke="black" stroke-width="7" />
+
+        <!-- Visor Black Base -->
+        <ellipse id="visor-base" cx="160" cy="175" rx="55" ry="45" fill="#151517" />
+
+        <!-- Visor LED Mouth / Speak indicator (inside visor) -->
+        <!-- Center wave that can scale and animate -->
+        <path id="visor-mouth-wave" d="M 135,185 Q 160,185 185,185" fill="none" stroke="#0088ff" stroke-width="4" stroke-linecap="round" filter="url(#blue-glow)" style="display: none;" />
+
+        <!-- Visor Reflections/Highlights -->
+        <g id="visor-highlights">
+          <!-- Main long glossy highlight -->
+          <path id="visor-highlight-long" d="M 175,143 C 197,153 207,173 207,183 C 205,170 193,150 175,143 Z" fill="white" opacity="0.85" />
+          <!-- Secondary smaller reflection dot -->
+          <circle id="visor-highlight-dot1" cx="194" cy="197" r="5" fill="white" opacity="0.75" />
+          <!-- Tertiary reflection dot -->
+          <circle id="visor-highlight-dot2" cx="184" cy="207" r="3" fill="white" opacity="0.6" />
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Load modern ES modules -->
+  <script type="module" src="../../dist/renderer/renderer.js"></script>
+</body>
+</html>
